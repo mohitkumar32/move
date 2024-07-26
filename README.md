@@ -1,157 +1,61 @@
-Here is the content for the README file in Markdown format. You can save this as README.md in the root of your project directory.
+Staking Module
+This module provides functionalities for staking tokens, unstaking them, and claiming staking rewards. The module ensures that users can stake a specified amount of tokens, withdraw them, and earn rewards based on a predefined Annual Percentage Yield (APY).
 
-markdown
-Copy code
-# Nftisland
-
-## Table of Contents
-
-- [Project Vision](#project-vision)
-- [Project Structure](#project-structure)
-  - [Nftisland Contract](#nftisland-contract)
-  - [Enums and Structs](#enums-and-structs)
-  - [Storage](#storage)
-- [Code Overview](#code-overview)
-  - [Enums](#enums)
-  - [Structs](#structs)
-  - [Contract](#contract)
-  - [Contract Implementation](#contract-implementation)
-    - [Minting an NFT](#minting-an-nft)
-    - [Fetching an NFT](#fetching-an-nft)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-  - [Minting an NFT](#minting-an-nft-1)
-  - [Fetching an NFT](#fetching-an-nft-1)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Project Vision
-
-**Nftisland** is a decentralized platform designed to facilitate the creation, management, and trading of Non-Fungible Tokens (NFTs) securely and efficiently on the Soroban blockchain. The primary goal is to empower creators and collectors by providing a user-friendly interface and robust backend infrastructure for minting, storing, and retrieving NFTs with unique identifiers and metadata stored on IPFS.
-
-## Project Structure
-
-### Nftisland Contract
-
-The core smart contract managing the NFT lifecycle. It includes:
-
-- **Minting NFTs**: Create new NFTs with unique identifiers and store metadata.
-- **Fetching NFTs**: Retrieve stored NFTs using their unique identifier.
-
-### Enums and Structs
-
-#### Enums
-
-- `Nftbook`: Enum to manage different types of NFT records.
-
-#### Structs
-
-- `Nft`: Struct to hold the NFT details including ID, owner, caption, and IPFS CID.
-
-### Storage
-
-Using Soroban SDK storage to persist NFT data:
-
-- **COUNT_NFT**: A counter to keep track of the number of minted NFTs.
-- **NFT Data**: Storage of each NFT's details using its ID as a key.
-
-## Code Overview
-
-### Enums
-
-```rust
-#[contracttype]
-pub enum Nftbook {
-    Nft(u32)
-}
+Error Codes
+EINSUFFICIENT_STAKE (0): Thrown when there is insufficient staked amount.
+EALREADY_STAKED (1): Thrown when the user has already staked tokens.
+EINVALID_UNSTAKE_AMOUNT (2): Thrown when the unstake amount is invalid.
+EINVALID_REWARD_AMOUNT (3): Thrown when the reward amount is invalid.
+EINVALID_APY (4): Thrown when the APY value is invalid.
+EINSUFFICIENT_BALANCE (5): Thrown when there is an insufficient balance to stake.
+Constants
+DEFAULT_APY: 1000 (Represents a 10% APY per year)
 Structs
-rust
-Copy code
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct Nft {
-    nft_id: u32,
-    nft_owner: String,
-    caption: String,
-    ipfs_cid: String,
+StakedBalance
+Stores the staked balance of a user.
+
+
+struct StakedBalance has store, key {
+    staked_balance: u64,
 }
-Contract
-rust
-Copy code
-#[contract]
-pub struct Nftisland;
-Contract Implementation
-Minting an NFT
-rust
-Copy code
-#[contractimpl]
-impl Nftisland {
-    pub fn mint_nft(env: Env, owr: String, nft_caption: String, ipfs_cid: String) -> u32 {
-        let mut nft_count: u32 = env.storage().instance().get(&COUNT_NFT).unwrap_or(0);
-        nft_count += 1;
+Public Functions
+stake
+Allows a user to stake a specified amount of tokens.
 
-        let mut nft_details = Self::fetch_nft(env.clone(), nft_count.clone());
-        
-        nft_details.nft_id = nft_count;
-        nft_details.nft_owner = owr;
-        nft_details.caption = nft_caption;
-        nft_details.ipfs_cid = ipfs_cid;
 
-        env.storage().instance().set(&Nftbook::Nft(nft_details.nft_id.clone()), &nft_details);
-        env.storage().instance().set(&COUNT_NFT, &nft_details.nft_id.clone());
-        env.storage().instance().extend_ttl(5000, 5000);
+public fun stake(acc_own: &signer, amount: u64)
+Parameters:
+acc_own: The signer's account.
+amount: The amount to stake.
+Errors:
+EINSUFFICIENT_BALANCE: If the user has insufficient balance to stake.
+EALREADY_STAKED: If the user has already staked tokens.
+unstake
+Allows a user to unstake a specified amount of tokens.
 
-        return nft_details.nft_id;        
-    }
-}
-Fetching an NFT
-rust
-Copy code
-#[contractimpl]
-impl Nftisland {
-    pub fn fetch_nft(env: Env, nft_id: u32) -> Nft {
-        let key = Nftbook::Nft(nft_id.clone());
 
-        env.storage().instance().get(&key).unwrap_or(Nft {
-            nft_id: 0,
-            nft_owner: String::from_str(&env, "Not found"),
-            caption: String::from_str(&env, "Caption not found"),
-            ipfs_cid: String::from_str(&env, "Invalid nft ID!"),
-        })
-    }
-}
-Getting Started
-Prerequisites
-Ensure you have the following installed:
-
-Rust
-Soroban SDK
-IPFS
-Installation
-Clone the repository:
-sh
-Copy code
-git clone https://github.com/yourusername/nftisland.git
-Navigate to the project directory:
-sh
-Copy code
-cd nftisland
-Install dependencies:
-sh
-Copy code
-cargo build
-Usage
-Minting an NFT
-To mint a new NFT, use the mint_nft function. Example:
+public fun unstake(acc_own: &signer, amount: u64) acquires StakedBalance
+Parameters:
+acc_own: The signer's account.
+amount: The amount to unstake.
+Errors:
+EINVALID_UNSTAKE_AMOUNT: If the unstake amount is invalid.
+claim_rewards
+Allows a user to claim staking rewards based on the staked amount and APY.
 
 rust
 Copy code
-let nft_id = Nftisland::mint_nft(env, "owner_address".to_string(), "NFT Caption".to_string(), "QmIPFSCID".to_string());
-Fetching an NFT
-To fetch an existing NFT, use the fetch_nft function. Example:
+public fun claim_rewards(acc_own: &signer) acquires StakedBalance
+Parameters:
+acc_own: The signer's account.
+Errors:
+EINSUFFICIENT_STAKE: If there is insufficient staked amount to claim rewards.
+Example Usage
+// Stake tokens
+my_addrx::Staking::stake(&acc_own, 1000);
 
-rust
-Copy code
-let nft = Nftisland::fetch_nft(env, nft_id);
+// Unstake tokens
+my_addrx::Staking::unstake(&acc_own, 500);
+
+// Claim staking rewards
+my_addrx::Staking::claim_rewards(&acc_own);
